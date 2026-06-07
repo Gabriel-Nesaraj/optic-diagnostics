@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye } from "lucide-react";
-import { MODELS, mockPredict, type ModelId, type Prediction } from "@/lib/eye-analysis";
+import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye, Activity, Wifi, WifiOff } from "lucide-react";
+import { MODELS, type ModelId } from "@/lib/eye-analysis";
+import { predict, compareAll, gradcam, backendStatus, type ApiPrediction } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import gradcamSample from "@/assets/gradcam-sample.jpg";
 import sampleFundus from "@/assets/sample-fundus.jpg";
 
 interface HistoryItem {
@@ -20,13 +20,18 @@ interface HistoryItem {
 export function Analyze() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [model, setModel] = useState<ModelId>("EfficientNetB0");
   const [loading, setLoading] = useState(false);
-  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [prediction, setPrediction] = useState<ApiPrediction | null>(null);
+  const [gradcamUrl, setGradcamUrl] = useState<string | null>(null);
+  const [compareResults, setCompareResults] = useState<ApiPrediction[] | null>(null);
+  const [comparing, setComparing] = useState(false);
   const [showGradCam, setShowGradCam] = useState(true);
   const [notes, setNotes] = useState("");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const status = backendStatus();
 
   const handleFile = (file: File) => {
     if (!/(jpeg|jpg|png)$/i.test(file.type) && !/\.(jpe?g|png)$/i.test(file.name)) {
@@ -40,47 +45,93 @@ export function Analyze() {
     const url = URL.createObjectURL(file);
     setImageUrl(url);
     setImageName(file.name);
+    setImageFile(file);
     setPrediction(null);
+    setGradcamUrl(null);
+    setCompareResults(null);
   };
 
-  const loadSample = () => {
+  const loadSample = async () => {
     setImageUrl(sampleFundus);
     setImageName("sample_fundus.jpg");
     setPrediction(null);
+    setGradcamUrl(null);
+    setCompareResults(null);
+    try {
+      const blob = await fetch(sampleFundus).then((r) => r.blob());
+      setImageFile(new File([blob], "sample_fundus.jpg", { type: blob.type || "image/jpeg" }));
+    } catch {
+      setImageFile(null);
+    }
   };
 
-  const analyze = () => {
+  const analyze = async () => {
     if (!imageUrl) {
       toast.error("Upload a retinal image first.");
       return;
     }
     setLoading(true);
     setPrediction(null);
-    setTimeout(() => {
-      const result = mockPredict(imageName + imageUrl.slice(-20), model);
-      setPrediction(result);
-      setLoading(false);
+    setGradcamUrl(null);
+    setCompareResults(null);
+    try {
+      const seed = imageName + imageUrl.slice(-20);
+      const [pred, cam] = await Promise.all([
+        predict(imageFile, model, seed),
+        gradcam(imageFile, model),
+      ]);
+      setPrediction(pred);
+      setGradcamUrl(cam.imageUrl);
       setHistory((h) =>
         [
           {
             id: Math.random().toString(36).slice(2),
             name: imageName,
             thumb: imageUrl!,
-            model,
-            predicted: result.predicted,
-            confidence: result.confidence,
+            model: pred.model as ModelId,
+            predicted: pred.predicted,
+            confidence: pred.confidence,
             time: new Date().toLocaleTimeString(),
           },
           ...h,
         ].slice(0, 6),
       );
-    }, 1800);
+      if (pred.source === "demo" && status.live) {
+        toast.warning("Backend unreachable — showing simulated result.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Analysis failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runCompare = async () => {
+    if (!imageUrl) {
+      toast.error("Upload a retinal image first.");
+      return;
+    }
+    setComparing(true);
+    try {
+      const seed = imageName + imageUrl.slice(-20);
+      const results = await compareAll(imageFile, seed);
+      setCompareResults(results);
+    } catch (err) {
+      console.error(err);
+      toast.error("Comparison failed.");
+    } finally {
+      setComparing(false);
+    }
   };
 
   const clear = () => {
     setImageUrl(null);
     setImageName("");
+    setImageFile(null);
     setPrediction(null);
+    setGradcamUrl(null);
+    setCompareResults(null);
     setNotes("");
   };
 
@@ -105,6 +156,13 @@ export function Analyze() {
         <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
           Upload a fundus image, select a CNN architecture, and run AI-assisted disease detection.
         </p>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
+          {status.live ? (
+            <><Wifi className="h-3 w-3 text-[var(--success)]" /><span>Live backend</span><code className="text-muted-foreground">{status.url}</code></>
+          ) : (
+            <><WifiOff className="h-3 w-3 text-muted-foreground" /><span>Demo mode — set <code className="font-mono">VITE_API_URL</code> to enable real inference</span></>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
@@ -163,7 +221,7 @@ export function Analyze() {
                 </div>
                 <div className="relative overflow-hidden rounded-xl border bg-black">
                   <img
-                    src={prediction && showGradCam ? gradcamSample : imageUrl}
+                    src={prediction && showGradCam && gradcamUrl ? gradcamUrl : imageUrl}
                     alt="Grad-CAM heatmap"
                     className="aspect-square w-full object-cover"
                   />
@@ -227,6 +285,18 @@ export function Analyze() {
                   <><Eye className="mr-2 h-4 w-4" /> Run Analysis</>
                 )}
               </Button>
+              <Button
+                size="lg"
+                variant="secondary"
+                onClick={runCompare}
+                disabled={comparing || !imageUrl}
+              >
+                {comparing ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Comparing…</>
+                ) : (
+                  <><Activity className="mr-2 h-4 w-4" /> Compare All Models</>
+                )}
+              </Button>
               {prediction && (
                 <Button variant="outline" onClick={downloadReport}>
                   <Download className="mr-2 h-4 w-4" /> Download Report
@@ -238,7 +308,7 @@ export function Analyze() {
               <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                 <div className="flex items-center gap-2 text-primary">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Analyzing retinal image using AI model…
+                  Analyzing retinal image using {model}…
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                   <div className="h-full w-1/2 animate-pulse bg-[var(--gradient-primary)]" />
@@ -246,6 +316,10 @@ export function Analyze() {
               </div>
             )}
           </div>
+
+          {compareResults && (
+            <CompareResultsPanel results={compareResults} />
+          )}
 
           <div className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-card)]">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -262,7 +336,7 @@ export function Analyze() {
 
         {/* Prediction Panel */}
         <div className="lg:col-span-2 space-y-6">
-          <PredictionPanel prediction={prediction} loading={loading} />
+          <PredictionPanel prediction={prediction} loading={loading} model={model} />
           <HistoryPanel history={history} />
         </div>
       </div>
@@ -270,7 +344,7 @@ export function Analyze() {
   );
 }
 
-function PredictionPanel({ prediction, loading }: { prediction: Prediction | null; loading: boolean }) {
+function PredictionPanel({ prediction, loading, model }: { prediction: ApiPrediction | null; loading: boolean; model: ModelId }) {
   return (
     <div className="rounded-2xl border bg-[var(--gradient-card)] p-5 shadow-[var(--shadow-card)]">
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -288,6 +362,7 @@ function PredictionPanel({ prediction, loading }: { prediction: Prediction | nul
 
       {loading && (
         <div className="space-y-3 py-6">
+          <p className="text-xs text-muted-foreground">Analyzing retinal image using {model}…</p>
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-6 animate-pulse rounded-md bg-muted" />
           ))}
@@ -318,8 +393,14 @@ function PredictionPanel({ prediction, loading }: { prediction: Prediction | nul
                 style={{ width: `${prediction.confidence * 100}%` }}
               />
             </div>
-            <div className="mt-3 text-xs text-muted-foreground">
-              Model: <span className="font-mono font-semibold text-foreground">{prediction.model}</span>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>Model: <span className="font-mono font-semibold text-foreground">{prediction.model}</span></span>
+              {prediction.inferenceMs != null && (
+                <span>Inference: <span className="font-mono text-foreground">{prediction.inferenceMs.toFixed(1)} ms</span></span>
+              )}
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${prediction.source === "live" ? "bg-[oklch(0.65_0.16_160/0.15)] text-[var(--success)]" : "bg-muted text-muted-foreground"}`}>
+                {prediction.source === "live" ? "LIVE" : "DEMO"}
+              </span>
             </div>
           </div>
 
