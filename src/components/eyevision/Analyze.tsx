@@ -507,3 +507,56 @@ ${imageUrl ? `<img src="${imageUrl}" alt="fundus" />` : ""}
 <p style="margin-top:32px;font-size:11px;color:#64748b">AI-assisted ophthalmology diagnosis system for education and research purposes only. Not a clinical diagnosis.</p>
 </body></html>`;
 }
+
+function CompareResultsPanel({ results }: { results: ApiPrediction[] }) {
+  const winner = results.reduce((a, b) => (a.confidence > b.confidence ? a : b));
+  return (
+    <div className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-card)]">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <Activity className="h-4 w-4" /> Multi-Model Comparison
+        </h3>
+        <span className="text-xs text-muted-foreground">
+          Top: <span className="font-mono font-semibold text-foreground">{winner.model}</span>
+        </span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        {results.map((r) => {
+          const meta = MODELS.find((m) => m.id === (r.model as ModelId));
+          const isTop = r.model === winner.model;
+          return (
+            <div
+              key={r.model}
+              className={`rounded-xl border p-4 ${isTop ? "border-primary bg-primary/5 shadow-[var(--shadow-glow)]" : "bg-muted/30"}`}
+            >
+              <div className="flex items-baseline justify-between">
+                <span className="font-semibold">{r.model}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${r.source === "live" ? "bg-[oklch(0.65_0.16_160/0.15)] text-[var(--success)]" : "bg-muted text-muted-foreground"}`}>
+                  {r.source.toUpperCase()}
+                </span>
+              </div>
+              <div className="mt-2 text-sm">{r.predicted}</div>
+              <div className="mt-1 text-2xl font-bold text-gradient">
+                {(r.confidence * 100).toFixed(1)}%
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-1 text-[10px] font-mono text-muted-foreground">
+                <span>Inference</span>
+                <span className="text-right text-foreground">{r.inferenceMs?.toFixed(1) ?? "—"} ms</span>
+                {meta && (
+                  <>
+                    <span>Params</span>
+                    <span className="text-right text-foreground">{meta.paramsM}M</span>
+                    <span>Val. Acc</span>
+                    <span className="text-right text-foreground">{meta.accuracy}%</span>
+                    <span>ROC-AUC</span>
+                    <span className="text-right text-foreground">{meta.auc.toFixed(3)}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
