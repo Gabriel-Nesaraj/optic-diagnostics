@@ -1,29 +1,48 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Header } from "@/components/eyevision/Header";
+import { Hero } from "@/components/eyevision/Hero";
+import { Analyze } from "@/components/eyevision/Analyze";
+import { Workflow } from "@/components/eyevision/Workflow";
+import { Comparison } from "@/components/eyevision/Comparison";
+import { Dashboard } from "@/components/eyevision/Dashboard";
+import { Footer } from "@/components/eyevision/Footer";
+import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "EyeVision AI — Deep Learning Ophthalmology Assistant" },
+      {
+        name: "description",
+        content:
+          "AI-powered detection of glaucoma, diabetic retinopathy, cataract and AMD from retinal fundus images using ResNet50, DenseNet121 and EfficientNetB0.",
+      },
+      { property: "og:title", content: "EyeVision AI — Ophthalmology Assistant" },
+      { property: "og:description", content: "Deep learning-based detection of eye diseases from retinal fundus images." },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  const [dark, setDark] = useState(true);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+  }, [dark]);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background text-foreground">
+      <Header dark={dark} onToggleDark={() => setDark((d) => !d)} />
+      <main>
+        <Hero />
+        <Analyze />
+        <Workflow />
+        <Comparison />
+        <Dashboard />
+      </main>
+      <Footer />
+      <Toaster />
     </div>
   );
 }
