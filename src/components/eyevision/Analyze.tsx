@@ -470,14 +470,14 @@ function buildReportHTML({
   imageName,
   notes,
 }: {
-  prediction: Prediction;
+  prediction: ApiPrediction;
   imageUrl: string | null;
   imageName: string;
   notes: string;
 }) {
   const rows = prediction.probabilities
     .map(
-      (p) =>
+      (p: { disease: string; prob: number }) =>
         `<tr><td>${p.disease}</td><td style="text-align:right">${(p.prob * 100).toFixed(2)}%</td></tr>`,
     )
     .join("");
