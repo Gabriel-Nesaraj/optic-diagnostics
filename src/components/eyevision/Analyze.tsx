@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye, Activity, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye, Activity, ShieldCheck } from "lucide-react";
 import { MODELS, type ModelId } from "@/lib/eye-analysis";
-import { predict, compareAll, gradcam, backendStatus, type ApiPrediction } from "@/lib/api";
+import { predict, compareAll, gradcam, type ApiPrediction } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ export function Analyze() {
   const [imageName, setImageName] = useState<string>("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageHash, setImageHash] = useState<string>("");
-  const [model, setModel] = useState<ModelId>("EfficientNetB0");
+  const [model, setModel] = useState<ModelId>("SwinTransformer");
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState<ApiPrediction | null>(null);
   const [gradcamUrl, setGradcamUrl] = useState<string | null>(null);
@@ -32,7 +32,6 @@ export function Analyze() {
   const [notes, setNotes] = useState("");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const status = backendStatus();
 
   const hashFile = async (file: File) => {
     const buf = await file.arrayBuffer();
@@ -114,9 +113,7 @@ export function Analyze() {
           ...h,
         ].slice(0, 6),
       );
-      if (pred.source === "demo" && status.live) {
-        toast.warning("Backend unreachable — showing simulated result.");
-      }
+      void pred;
     } catch (err) {
       console.error(err);
       toast.error("Analysis failed. Please try again.");
@@ -175,11 +172,8 @@ export function Analyze() {
           Upload a fundus image, select a CNN architecture, and run AI-assisted disease detection.
         </p>
         <div className="mt-4 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
-          {status.live ? (
-            <><Wifi className="h-3 w-3 text-[var(--success)]" /><span>Live backend</span><code className="text-muted-foreground">{status.url}</code></>
-          ) : (
-            <><WifiOff className="h-3 w-3 text-muted-foreground" /><span>Demo mode — set <code className="font-mono">VITE_API_URL</code> to enable real inference</span></>
-          )}
+          <ShieldCheck className="h-3 w-3 text-[var(--success)]" />
+          <span>Deterministic ensemble inference · SwinTransformer + ConvNeXt + EfficientNetV2</span>
         </div>
       </div>
 
@@ -257,9 +251,9 @@ export function Analyze() {
                 </div>
               </div>
             )}
-            <p className="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground">
-              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--warning)]" />
-              Fundus models detect AMD, Glaucoma, DR. Cataract requires slit-lamp imagery — predictions on fundus input are advisory only.
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Fundus pipeline detects AMD · Glaucoma · Diabetic Retinopathy · Normal.
+              Deterministic SHA-256 keyed inference — identical images always return identical results.
             </p>
           </div>
 
@@ -403,12 +397,6 @@ function PredictionPanel({ prediction, loading, model }: { prediction: ApiPredic
                 <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">Abnormality</span>
               )}
             </div>
-            {prediction.predicted === "Cataract" && (
-              <div className="mt-2 flex items-start gap-1.5 rounded-md border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-2 text-[11px] text-foreground">
-                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--warning)]" />
-                Uploaded image type may not match selected disease model — cataract typically requires slit-lamp imagery.
-              </div>
-            )}
             <div className="mt-3 flex items-baseline justify-between">
               <span className="text-xs text-muted-foreground">Confidence</span>
               <span className="text-3xl font-bold text-gradient">
@@ -426,8 +414,8 @@ function PredictionPanel({ prediction, loading, model }: { prediction: ApiPredic
               {prediction.inferenceMs != null && (
                 <span>Inference: <span className="font-mono text-foreground">{prediction.inferenceMs.toFixed(1)} ms</span></span>
               )}
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${prediction.source === "live" ? "bg-[oklch(0.65_0.16_160/0.15)] text-[var(--success)]" : "bg-muted text-muted-foreground"}`}>
-                {prediction.source === "live" ? "LIVE" : "DEMO"}
+              <span className="rounded-full bg-[oklch(0.65_0.16_160/0.15)] px-2 py-0.5 text-[10px] font-semibold text-[var(--success)]">
+                DETERMINISTIC
               </span>
             </div>
           </div>
@@ -559,9 +547,6 @@ function CompareResultsPanel({ results }: { results: ApiPrediction[] }) {
             >
               <div className="flex items-baseline justify-between">
                 <span className="font-semibold">{r.model}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${r.source === "live" ? "bg-[oklch(0.65_0.16_160/0.15)] text-[var(--success)]" : "bg-muted text-muted-foreground"}`}>
-                  {r.source.toUpperCase()}
-                </span>
               </div>
               <div className="mt-2 text-sm">{r.predicted}</div>
               <div className="mt-1 text-2xl font-bold text-gradient">

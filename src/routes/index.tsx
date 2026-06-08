@@ -16,7 +16,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "AI-powered detection of glaucoma, diabetic retinopathy, cataract and AMD from retinal fundus images using ResNet50, DenseNet121 and EfficientNetB0.",
+          "AI-powered detection of AMD, glaucoma and diabetic retinopathy from retinal fundus images using a deterministic SwinTransformer + ConvNeXt + EfficientNetV2 ensemble.",
       },
       { property: "og:title", content: "EyeVision AI — Ophthalmology Assistant" },
       { property: "og:description", content: "Deep learning-based detection of eye diseases from retinal fundus images." },

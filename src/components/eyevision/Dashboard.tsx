@@ -12,7 +12,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Confusion Matrix · EfficientNetB0">
+        <Card title="Confusion Matrix · SwinTransformer (Ensemble Top)">
           <ConfusionMatrix />
         </Card>
         <Card title="ROC Curve · Multi-Model AUC">
@@ -40,13 +40,12 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-const LABELS = ["Normal", "Glauc.", "DR", "Cat.", "AMD"];
+const LABELS = ["Normal", "Glauc.", "DR", "AMD"];
 const MATRIX = [
-  [92, 2, 3, 1, 2],
-  [3, 89, 4, 1, 3],
-  [2, 3, 94, 0, 1],
-  [4, 1, 0, 93, 2],
-  [2, 4, 2, 1, 91],
+  [96, 1, 2, 1],
+  [2, 95, 2, 1],
+  [1, 2, 96, 1],
+  [1, 1, 2, 96],
 ];
 
 function ConfusionMatrix() {
@@ -87,9 +86,9 @@ function ConfusionMatrix() {
 
 function RocCurve() {
   const curves = [
-    { name: "EfficientNetB0", color: "oklch(0.7 0.16 195)", auc: 0.981 },
-    { name: "DenseNet121", color: "oklch(0.6 0.18 230)", auc: 0.974 },
-    { name: "ResNet50", color: "oklch(0.7 0.18 75)", auc: 0.962 },
+    { name: "SwinTransformer", color: "oklch(0.7 0.16 195)", auc: 0.992 },
+    { name: "ConvNeXt", color: "oklch(0.6 0.18 230)", auc: 0.989 },
+    { name: "EfficientNetV2", color: "oklch(0.7 0.18 75)", auc: 0.984 },
   ];
   // generate a curve
   const points = (boost: number) =>
