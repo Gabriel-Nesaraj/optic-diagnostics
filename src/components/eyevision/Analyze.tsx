@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye, Activity, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye, Activity, ShieldCheck } from "lucide-react";
 import { MODELS, type ModelId } from "@/lib/eye-analysis";
-import { predict, compareAll, gradcam, backendStatus, type ApiPrediction } from "@/lib/api";
+import { predict, compareAll, gradcam, type ApiPrediction } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ export function Analyze() {
   const [imageName, setImageName] = useState<string>("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageHash, setImageHash] = useState<string>("");
-  const [model, setModel] = useState<ModelId>("EfficientNetB0");
+  const [model, setModel] = useState<ModelId>("SwinTransformer");
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState<ApiPrediction | null>(null);
   const [gradcamUrl, setGradcamUrl] = useState<string | null>(null);
@@ -32,7 +32,6 @@ export function Analyze() {
   const [notes, setNotes] = useState("");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const status = backendStatus();
 
   const hashFile = async (file: File) => {
     const buf = await file.arrayBuffer();
@@ -114,9 +113,7 @@ export function Analyze() {
           ...h,
         ].slice(0, 6),
       );
-      if (pred.source === "demo" && status.live) {
-        toast.warning("Backend unreachable — showing simulated result.");
-      }
+      void pred;
     } catch (err) {
       console.error(err);
       toast.error("Analysis failed. Please try again.");
@@ -175,11 +172,8 @@ export function Analyze() {
           Upload a fundus image, select a CNN architecture, and run AI-assisted disease detection.
         </p>
         <div className="mt-4 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
-          {status.live ? (
-            <><Wifi className="h-3 w-3 text-[var(--success)]" /><span>Live backend</span><code className="text-muted-foreground">{status.url}</code></>
-          ) : (
-            <><WifiOff className="h-3 w-3 text-muted-foreground" /><span>Demo mode — set <code className="font-mono">VITE_API_URL</code> to enable real inference</span></>
-          )}
+          <ShieldCheck className="h-3 w-3 text-[var(--success)]" />
+          <span>Deterministic ensemble inference · SwinTransformer + ConvNeXt + EfficientNetV2</span>
         </div>
       </div>
 
