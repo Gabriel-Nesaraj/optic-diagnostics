@@ -18,7 +18,7 @@ export function Hero() {
           <div className="text-primary-foreground">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs backdrop-blur-md">
               <span className="h-1.5 w-1.5 rounded-full bg-[oklch(0.8_0.18_160)] animate-pulse" />
-              Deep Learning · ResNet · DenseNet · EfficientNet
+              Deep Learning · SwinTransformer · ConvNeXt · EfficientNetV2
             </div>
             <h1 className="text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl">
               AI Eye Disease<br />
