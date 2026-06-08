@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye, Activity, Wifi, WifiOff } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Download, FileImage, History, NotebookPen, Eye, Activity, Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import { MODELS, type ModelId } from "@/lib/eye-analysis";
 import { predict, compareAll, gradcam, backendStatus, type ApiPrediction } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export function Analyze() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string>("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageHash, setImageHash] = useState<string>("");
   const [model, setModel] = useState<ModelId>("EfficientNetB0");
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState<ApiPrediction | null>(null);
@@ -33,7 +34,15 @@ export function Analyze() {
   const fileRef = useRef<HTMLInputElement>(null);
   const status = backendStatus();
 
-  const handleFile = (file: File) => {
+  const hashFile = async (file: File) => {
+    const buf = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  const handleFile = async (file: File) => {
     if (!/(jpeg|jpg|png)$/i.test(file.type) && !/\.(jpe?g|png)$/i.test(file.name)) {
       toast.error("Only JPG, JPEG, or PNG images are supported.");
       return;
@@ -49,6 +58,11 @@ export function Analyze() {
     setPrediction(null);
     setGradcamUrl(null);
     setCompareResults(null);
+    try {
+      setImageHash(await hashFile(file));
+    } catch {
+      setImageHash(`${file.name}-${file.size}-${file.lastModified}`);
+    }
   };
 
   const loadSample = async () => {
@@ -59,9 +73,12 @@ export function Analyze() {
     setCompareResults(null);
     try {
       const blob = await fetch(sampleFundus).then((r) => r.blob());
-      setImageFile(new File([blob], "sample_fundus.jpg", { type: blob.type || "image/jpeg" }));
+      const file = new File([blob], "sample_fundus.jpg", { type: blob.type || "image/jpeg" });
+      setImageFile(file);
+      setImageHash(await hashFile(file));
     } catch {
       setImageFile(null);
+      setImageHash("sample_fundus.jpg");
     }
   };
 
@@ -75,7 +92,8 @@ export function Analyze() {
     setGradcamUrl(null);
     setCompareResults(null);
     try {
-      const seed = imageName + imageUrl.slice(-20);
+      // Deterministic seed: SHA-256 of file bytes → same image always yields same prediction.
+      const seed = imageHash || imageName;
       const [pred, cam] = await Promise.all([
         predict(imageFile, model, seed),
         gradcam(imageFile, model),
@@ -114,7 +132,7 @@ export function Analyze() {
     }
     setComparing(true);
     try {
-      const seed = imageName + imageUrl.slice(-20);
+      const seed = imageHash || imageName;
       const results = await compareAll(imageFile, seed);
       setCompareResults(results);
     } catch (err) {
