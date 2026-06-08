@@ -403,6 +403,12 @@ function PredictionPanel({ prediction, loading, model }: { prediction: ApiPredic
                 <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">Abnormality</span>
               )}
             </div>
+            {prediction.predicted === "Cataract" && (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-2 text-[11px] text-foreground">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--warning)]" />
+                Uploaded image type may not match selected disease model — cataract typically requires slit-lamp imagery.
+              </div>
+            )}
             <div className="mt-3 flex items-baseline justify-between">
               <span className="text-xs text-muted-foreground">Confidence</span>
               <span className="text-3xl font-bold text-gradient">
