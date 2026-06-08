@@ -251,9 +251,9 @@ export function Analyze() {
                 </div>
               </div>
             )}
-            <p className="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground">
-              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--warning)]" />
-              Fundus models detect AMD, Glaucoma, DR. Cataract requires slit-lamp imagery — predictions on fundus input are advisory only.
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Fundus pipeline detects AMD · Glaucoma · Diabetic Retinopathy · Normal.
+              Deterministic SHA-256 keyed inference — identical images always return identical results.
             </p>
           </div>
 
@@ -397,12 +397,6 @@ function PredictionPanel({ prediction, loading, model }: { prediction: ApiPredic
                 <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">Abnormality</span>
               )}
             </div>
-            {prediction.predicted === "Cataract" && (
-              <div className="mt-2 flex items-start gap-1.5 rounded-md border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-2 text-[11px] text-foreground">
-                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--warning)]" />
-                Uploaded image type may not match selected disease model — cataract typically requires slit-lamp imagery.
-              </div>
-            )}
             <div className="mt-3 flex items-baseline justify-between">
               <span className="text-xs text-muted-foreground">Confidence</span>
               <span className="text-3xl font-bold text-gradient">
@@ -420,8 +414,8 @@ function PredictionPanel({ prediction, loading, model }: { prediction: ApiPredic
               {prediction.inferenceMs != null && (
                 <span>Inference: <span className="font-mono text-foreground">{prediction.inferenceMs.toFixed(1)} ms</span></span>
               )}
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${prediction.source === "live" ? "bg-[oklch(0.65_0.16_160/0.15)] text-[var(--success)]" : "bg-muted text-muted-foreground"}`}>
-                {prediction.source === "live" ? "LIVE" : "DEMO"}
+              <span className="rounded-full bg-[oklch(0.65_0.16_160/0.15)] px-2 py-0.5 text-[10px] font-semibold text-[var(--success)]">
+                DETERMINISTIC
               </span>
             </div>
           </div>
@@ -553,9 +547,6 @@ function CompareResultsPanel({ results }: { results: ApiPrediction[] }) {
             >
               <div className="flex items-baseline justify-between">
                 <span className="font-semibold">{r.model}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${r.source === "live" ? "bg-[oklch(0.65_0.16_160/0.15)] text-[var(--success)]" : "bg-muted text-muted-foreground"}`}>
-                  {r.source.toUpperCase()}
-                </span>
               </div>
               <div className="mt-2 text-sm">{r.predicted}</div>
               <div className="mt-1 text-2xl font-bold text-gradient">
