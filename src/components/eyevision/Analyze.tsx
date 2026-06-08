@@ -257,6 +257,10 @@ export function Analyze() {
                 </div>
               </div>
             )}
+            <p className="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--warning)]" />
+              Fundus models detect AMD, Glaucoma, DR. Cataract requires slit-lamp imagery — predictions on fundus input are advisory only.
+            </p>
           </div>
 
           <div className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-card)]">
