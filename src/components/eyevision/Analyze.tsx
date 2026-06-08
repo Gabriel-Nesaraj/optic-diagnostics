@@ -293,7 +293,8 @@ export function Analyze() {
                 size="lg"
                 onClick={analyze}
                 disabled={loading || !imageUrl}
-                className="bg-[var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-glow)] hover:opacity-95"
+                style={{ background: "var(--gradient-primary)" }}
+                className="text-white shadow-[var(--shadow-glow)] hover:opacity-95"
               >
                 {loading ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing…</>
