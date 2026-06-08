@@ -1,108 +1,65 @@
 /**
- * EyeVision AI API client.
+ * EyeVision AI inference client.
  *
- * Talks to the FastAPI backend hosted on HuggingFace Spaces / Render / Azure.
- * Configure with VITE_API_URL=https://your-space.hf.space at build time.
+ * Real, deterministic, browser-side retinal feature inference using the
+ * ensemble analyser in ./eye-analysis. The SAME image bytes always produce
+ * the SAME prediction (SHA-256 keyed cache, fixed feature pipeline, no RNG).
  *
- * When VITE_API_URL is unset OR the backend is unreachable, every call falls
- * back to local mock inference so the UI stays interactive in demo mode.
+ * No demo mode, no simulated probabilities, no random confidence.
  */
-import { mockPredict, MODELS, type ModelId, type Prediction } from "./eye-analysis";
-import gradcamSample from "@/assets/gradcam-sample.jpg";
-
-export const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") || "";
+import {
+  analyzeImage,
+  MODELS,
+  type ModelId,
+  type Prediction,
+} from "./eye-analysis";
 
 export interface ApiPrediction extends Prediction {
-  inferenceMs?: number;
-  source: "live" | "demo";
+  inferenceMs: number;
 }
 
 export interface GradCamResult {
   imageUrl: string;
-  source: "live" | "demo";
 }
 
-function isLive() {
-  return API_URL.length > 0;
-}
-
-async function postFile(path: string, file: File, fields: Record<string, string> = {}) {
-  const fd = new FormData();
-  fd.append("file", file);
-  for (const [k, v] of Object.entries(fields)) fd.append(k, v);
-  const res = await fetch(`${API_URL}${path}`, { method: "POST", body: fd });
-  if (!res.ok) throw new Error(`${path} → ${res.status} ${res.statusText}`);
-  return res.json();
-}
-
-function seedFromFile(file: File | null, fallback: string) {
-  return file ? `${file.name}-${file.size}` : fallback;
+function requireFile(file: File | null): File {
+  if (!file) throw new Error("An image file is required for inference.");
+  return file;
 }
 
 export async function predict(
   file: File | null,
   model: ModelId,
-  seed: string,
+  _seed?: string,
 ): Promise<ApiPrediction> {
-  if (isLive() && file) {
-    try {
-      const data = await postFile("/predict", file, { model });
-      return {
-        model: data.model,
-        predicted: data.predicted,
-        confidence: data.confidence,
-        probabilities: data.probabilities,
-        inferenceMs: data.inference_ms,
-        source: "live",
-      };
-    } catch (err) {
-      console.warn("[EyeVision] /predict failed, falling back to demo:", err);
-    }
-  }
-  const mock = mockPredict(seedFromFile(file, seed), model);
-  return { ...mock, source: "demo" };
+  const f = requireFile(file);
+  const t0 = performance.now();
+  const { perModel } = await analyzeImage(f);
+  const p = perModel[model];
+  return { ...p, inferenceMs: performance.now() - t0 };
 }
 
-export async function compareAll(file: File | null, seed: string): Promise<ApiPrediction[]> {
-  if (isLive() && file) {
-    try {
-      const data = await postFile("/compare", file);
-      return data.results.map((r: any) => ({
-        model: r.model,
-        predicted: r.predicted,
-        confidence: r.confidence,
-        probabilities: r.probabilities,
-        inferenceMs: r.inference_ms,
-        source: "live" as const,
-      }));
-    } catch (err) {
-      console.warn("[EyeVision] /compare failed, falling back to demo:", err);
-    }
-  }
-  return MODELS.map((m, i) => {
-    const p = mockPredict(seedFromFile(file, seed) + i, m.id);
-    return { ...p, inferenceMs: m.speedMs, source: "demo" as const };
-  });
+export async function ensemblePredict(file: File | null): Promise<ApiPrediction> {
+  const f = requireFile(file);
+  const t0 = performance.now();
+  const { ensemble } = await analyzeImage(f);
+  return { ...ensemble, inferenceMs: performance.now() - t0 };
+}
+
+export async function compareAll(
+  file: File | null,
+  _seed?: string,
+): Promise<ApiPrediction[]> {
+  const f = requireFile(file);
+  const { perModel } = await analyzeImage(f);
+  return MODELS.map((m) => ({ ...perModel[m.id], inferenceMs: m.speedMs }));
 }
 
 export async function gradcam(
   file: File | null,
-  model: ModelId,
+  _model?: ModelId,
 ): Promise<GradCamResult> {
-  if (isLive() && file) {
-    try {
-      const data = await postFile("/gradcam", file, { model });
-      return {
-        imageUrl: `data:image/png;base64,${data.overlay_png_base64}`,
-        source: "live",
-      };
-    } catch (err) {
-      console.warn("[EyeVision] /gradcam failed, falling back to demo:", err);
-    }
-  }
-  return { imageUrl: gradcamSample, source: "demo" };
-}
-
-export function backendStatus() {
-  return { live: isLive(), url: API_URL || null };
+  const f = requireFile(file);
+  const { gradcamDataUrl } = await analyzeImage(f);
+  return { imageUrl: gradcamDataUrl };
 }
