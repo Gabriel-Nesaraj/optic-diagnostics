@@ -3,7 +3,7 @@ import { Upload, Cog, Cpu, Layers, Activity, Stethoscope } from "lucide-react";
 const STEPS = [
   { Icon: Upload, label: "Upload Eye Image", sub: "JPG · PNG · JPEG" },
   { Icon: Cog, label: "Preprocessing", sub: "Resize 224×224 · Normalize" },
-  { Icon: Cpu, label: "CNN Model", sub: "ResNet / DenseNet / EfficientNet" },
+  { Icon: Cpu, label: "SOTA Ensemble", sub: "Swin / ConvNeXt / EfficientNetV2" },
   { Icon: Layers, label: "Feature Extraction", sub: "Deep representations" },
   { Icon: Activity, label: "Classification", sub: "5 disease classes" },
   { Icon: Stethoscope, label: "Clinical Prediction", sub: "Confidence + Grad-CAM" },
